@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Card from './Card';
 import WinForm from './WinForm';
 import Leaderboard from './Leaderboard';
@@ -41,6 +41,7 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
   const [formDone, setFormDone] = useState(false);
 
   const { elapsedMs, start: startTimer, stop: stopTimer, reset: resetTimer } = useTimer();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Initialize deck when difficulty changes
   useEffect(() => {
@@ -123,7 +124,7 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
             // Trigger mismatch shake
             setMismatchIds([firstId, secondId]);
             // No match — show both for 1 second then flip back
-            setTimeout(() => {
+            timeoutRef.current = setTimeout(() => {
               setCards((current) =>
                 current.map((c) =>
                   c.id === firstId || c.id === secondId
@@ -144,6 +145,7 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
   );
 
   const handleRestart = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setCards(createShuffledDeck(difficulty.pairs));
     setFlippedIds([]);
     setIsChecking(false);
