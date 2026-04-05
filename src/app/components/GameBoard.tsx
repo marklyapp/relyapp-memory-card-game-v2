@@ -2,9 +2,12 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Card from './Card';
+import WinForm from './WinForm';
+import Leaderboard from './Leaderboard';
 import { CardType, DifficultyConfig } from '../lib/types';
 import { createShuffledDeck } from '../lib/deck';
 import { useTimer, formatTime } from '../lib/timer';
+import { LeaderboardEntry } from '../lib/leaderboard';
 
 interface GameBoardProps {
   difficulty: DifficultyConfig;
@@ -27,10 +30,15 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
   const [isChecking, setIsChecking] = useState(false);
   const [moves, setMoves] = useState(0);
   const [hasWon, setHasWon] = useState(false);
+  const [finalTimeMs, setFinalTimeMs] = useState<number>(0);
   const [finalTime, setFinalTime] = useState<string>("");
   const [hasStarted, setHasStarted] = useState(false);
   // ids of cards that just mismatched (for shake animation)
   const [mismatchIds, setMismatchIds] = useState<number[]>([]);
+  // leaderboard state
+  const [savedEntry, setSavedEntry] = useState<LeaderboardEntry | null>(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [formDone, setFormDone] = useState(false);
 
   const { elapsedMs, start: startTimer, stop: stopTimer, reset: resetTimer } = useTimer();
 
@@ -41,9 +49,13 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
     setIsChecking(false);
     setMoves(0);
     setHasWon(false);
+    setFinalTimeMs(0);
     setFinalTime("");
     setHasStarted(false);
     setMismatchIds([]);
+    setSavedEntry(null);
+    setShowLeaderboard(false);
+    setFormDone(false);
     resetTimer();
   // resetTimer is stable (useCallback), safe to include
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -53,6 +65,7 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
   useEffect(() => {
     if (cards.length > 0 && cards.every((c) => c.isMatched)) {
       stopTimer();
+      setFinalTimeMs(elapsedMs);
       setFinalTime(formatTime(elapsedMs));
       setHasWon(true);
     }
@@ -136,10 +149,24 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
     setIsChecking(false);
     setMoves(0);
     setHasWon(false);
+    setFinalTimeMs(0);
     setFinalTime("");
     setHasStarted(false);
     setMismatchIds([]);
+    setSavedEntry(null);
+    setShowLeaderboard(false);
+    setFormDone(false);
     resetTimer();
+  };
+
+  const handleSaved = (entry: LeaderboardEntry) => {
+    setSavedEntry(entry);
+    setFormDone(true);
+    setShowLeaderboard(true);
+  };
+
+  const handleSkip = () => {
+    setFormDone(true);
   };
 
   const matchedCount = cards.filter((c) => c.isMatched).length / 2;
@@ -212,20 +239,41 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
               <span>Time: <strong className="font-mono text-green-700">{finalTime}</strong></span>
             )}
           </div>
-          <div className="flex justify-center gap-3 mt-4">
-            <button
-              onClick={onChangeDifficulty}
-              className="px-5 py-2 bg-white hover:bg-gray-50 active:bg-gray-100 focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none border border-indigo-300 text-indigo-600 font-semibold rounded-xl shadow transition-all duration-200 cursor-pointer"
-            >
-              Change Difficulty
-            </button>
-            <button
-              onClick={handleRestart}
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 active:bg-green-800 focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 focus-visible:outline-none text-white font-semibold rounded-xl shadow transition-all duration-200 cursor-pointer"
-            >
-              Play Again
-            </button>
-          </div>
+
+          {/* Name entry form — shown until saved or skipped */}
+          {!formDone && (
+            <WinForm
+              timeMs={finalTimeMs}
+              difficulty={difficulty.level}
+              moves={moves}
+              onSaved={handleSaved}
+              onSkip={handleSkip}
+            />
+          )}
+
+          {/* Post-form action buttons */}
+          {formDone && (
+            <div className="flex justify-center gap-3 mt-4">
+              <button
+                onClick={() => setShowLeaderboard(true)}
+                className="px-5 py-2 bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600 focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:outline-none border border-yellow-500 text-yellow-900 font-semibold rounded-xl shadow transition-all duration-200 cursor-pointer"
+              >
+                🏆 Leaderboard
+              </button>
+              <button
+                onClick={onChangeDifficulty}
+                className="px-5 py-2 bg-white hover:bg-gray-50 active:bg-gray-100 focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none border border-indigo-300 text-indigo-600 font-semibold rounded-xl shadow transition-all duration-200 cursor-pointer"
+              >
+                Change Difficulty
+              </button>
+              <button
+                onClick={handleRestart}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 active:bg-green-800 focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-2 focus-visible:outline-none text-white font-semibold rounded-xl shadow transition-all duration-200 cursor-pointer"
+              >
+                Play Again
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -251,6 +299,15 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
       <p id="game-instructions" className="sr-only">
         Click or press Enter/Space on a card to flip it. Match pairs of cards to win.
       </p>
+
+      {/* Leaderboard modal */}
+      {showLeaderboard && (
+        <Leaderboard
+          highlightEntry={savedEntry}
+          initialDifficulty={difficulty.level}
+          onClose={() => setShowLeaderboard(false)}
+        />
+      )}
     </div>
   );
 }
