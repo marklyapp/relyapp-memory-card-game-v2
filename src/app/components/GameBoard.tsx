@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import Card from './Card';
 import { CardType, DifficultyConfig } from '../lib/types';
 import { createShuffledDeck } from '../lib/deck';
+import { useTimer, formatTime } from '../lib/timer';
 
 interface GameBoardProps {
   difficulty: DifficultyConfig;
@@ -26,6 +27,10 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
   const [isChecking, setIsChecking] = useState(false);
   const [moves, setMoves] = useState(0);
   const [hasWon, setHasWon] = useState(false);
+  const [finalTime, setFinalTime] = useState<string>("");
+  const [hasStarted, setHasStarted] = useState(false);
+
+  const { elapsedMs, start: startTimer, stop: stopTimer, reset: resetTimer } = useTimer();
 
   // Initialize deck when difficulty changes
   useEffect(() => {
@@ -34,13 +39,22 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
     setIsChecking(false);
     setMoves(0);
     setHasWon(false);
+    setFinalTime("");
+    setHasStarted(false);
+    resetTimer();
+  // resetTimer is stable (useCallback), safe to include
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [difficulty]);
 
   // Check win condition whenever cards change
   useEffect(() => {
     if (cards.length > 0 && cards.every((c) => c.isMatched)) {
+      stopTimer();
+      setFinalTime(formatTime(elapsedMs));
       setHasWon(true);
     }
+  // We intentionally capture elapsedMs at the moment of win; stopTimer is stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cards]);
 
   const handleCardClick = useCallback(
@@ -48,6 +62,12 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
       if (isChecking) return;
       if (flippedIds.includes(id)) return;
       if (flippedIds.length >= 2) return;
+
+      // Start timer on first card flip
+      if (!hasStarted) {
+        startTimer();
+        setHasStarted(true);
+      }
 
       const newFlipped = [...flippedIds, id];
 
@@ -99,7 +119,7 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
         });
       }
     },
-    [flippedIds, isChecking]
+    [flippedIds, isChecking, hasStarted, startTimer]
   );
 
   const handleRestart = () => {
@@ -108,6 +128,9 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
     setIsChecking(false);
     setMoves(0);
     setHasWon(false);
+    setFinalTime("");
+    setHasStarted(false);
+    resetTimer();
   };
 
   const matchedCount = cards.filter((c) => c.isMatched).length / 2;
@@ -126,6 +149,16 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
             Pairs: {matchedCount}/{totalPairs}
           </span>
         </div>
+
+        {/* Timer display */}
+        <div
+          className="text-2xl font-mono font-bold text-indigo-600 tabular-nums"
+          aria-label={"Elapsed time: " + formatTime(elapsedMs)}
+          aria-live="off"
+        >
+          {formatTime(elapsedMs)}
+        </div>
+
         <div className="flex items-center gap-2">
           <button
             onClick={onChangeDifficulty}
@@ -158,6 +191,11 @@ export default function GameBoard({ difficulty, onChangeDifficulty }: GameBoardP
           <p className="text-gray-600 mt-1">
             Completed in <strong>{moves}</strong> moves
           </p>
+          {finalTime && (
+            <p className="text-gray-600 mt-1">
+              Time: <strong className="font-mono">{finalTime}</strong>
+            </p>
+          )}
           <div className="flex justify-center gap-3 mt-4">
             <button
               onClick={onChangeDifficulty}
