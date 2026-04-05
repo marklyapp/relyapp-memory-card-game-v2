@@ -2,7 +2,7 @@
  * Unit tests for the card deck creation and shuffle logic (issue #2).
  * Covers: createShuffledDeck pairs, uniqueness, shuffling, emoji symbols.
  */
-import { createShuffledDeck } from '../../src/app/lib/deck';
+import { createShuffledDeck } from '../app/lib/deck';
 
 describe('createShuffledDeck', () => {
   it('creates a deck with exactly 2x pairs cards', () => {
