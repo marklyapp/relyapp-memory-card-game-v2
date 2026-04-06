@@ -15,7 +15,6 @@ export default function Card({ card, onClick, disabled, compact = false, mismatc
   const faceUp = isFlipped || isMatched;
   const isClickable = !disabled && !faceUp;
 
-  // Build scene class list
   const sceneClasses = [
     'card-scene',
     compact ? 'card-scene-compact' : '',
@@ -24,7 +23,6 @@ export default function Card({ card, onClick, disabled, compact = false, mismatc
     mismatch && isFlipped ? 'card-scene--mismatch' : '',
   ].filter(Boolean).join(' ');
 
-  const emojiSizeBack = compact ? 'text-lg sm:text-xl' : 'text-2xl sm:text-3xl';
   const emojiSizeFront = compact ? 'text-xl sm:text-2xl' : 'text-3xl sm:text-4xl';
 
   return (
@@ -44,11 +42,10 @@ export default function Card({ card, onClick, disabled, compact = false, mismatc
       }}
     >
       <div className={"card-inner" + (faceUp ? ' flipped' : '')}>
-        {/* Back face — patterned */}
-        <div className="card-face card-back" aria-hidden="true">
-          <span className={emojiSizeBack + " select-none opacity-80"}>🂠</span>
-        </div>
-        {/* Front face — revealed */}
+        {/* Back face — CSS patterned, no emoji needed */}
+        <div className="card-face card-back" aria-hidden="true" />
+
+        {/* Front face — revealed with colorful emoji */}
         <div
           className={
             'card-face card-front' +
@@ -56,7 +53,7 @@ export default function Card({ card, onClick, disabled, compact = false, mismatc
           }
           aria-hidden="true"
         >
-          <span className={emojiSizeFront + " select-none"}>{emoji}</span>
+          <span className={emojiSizeFront + " select-none leading-none"}>{emoji}</span>
         </div>
       </div>
     </div>
